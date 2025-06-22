@@ -67,6 +67,7 @@
       padding-top: 60px;
     }
 
+    
     .sidebar a {
       padding: 12px 20px;
       text-decoration: none;
