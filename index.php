@@ -462,40 +462,32 @@ function sendMessage() {
 
   responseBox.innerText = "Thinking...";
 
-fetch("https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer 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",
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    inputs: `I am your assistant for navigating the document management app. 
-I respond to one question at a time maximum 10 words!
-
-User: ${message}
-Assistant:`,
-    parameters: {
-      max_new_tokens: 10,
-      temperature: 0.5
+  fetch("http://127.0.0.1:5000/generate", {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Origin": "http://127.0.0.1"
+    },
+    body: JSON.stringify({ message: message })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.reply) {
+      responseBox.innerText = data.reply;
+    } else if (data.error) {
+      responseBox.innerText = "Server error: " + data.error;
+    } else {
+      responseBox.innerText = "Unknown response.";
     }
   })
-})
-.then(res => res.json())
-.then(data => {
-  let reply = data?.generated_text || (Array.isArray(data) ? data[0]?.generated_text : null);
-  if (reply) {
-    reply = reply.replace(/^Assistant:\s*/i, '').trim();
-    responseBox.innerText = reply;
-  } else {
-    responseBox.innerText = "Sorry, I didn’t understand that.";
-  }
-})
-.catch(err => {
-  responseBox.innerText = "Error: " + err.message;
-});
+  .catch(err => {
+    responseBox.innerText = "Error: " + err.message;
+  });
 
   input.value = "";
 }
+
+
 
 </script>
 <script>
