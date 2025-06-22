@@ -23,7 +23,7 @@ $cloudinary = new Cloudinary([
 if (isset($_GET['id'])) {
     $fileId = (int)$_GET['id'];
 
-    // Get file path and folder before deleting
+    
     $stmt = $conn->prepare("SELECT file_path, folder FROM uploads WHERE id = ?");
     $stmt->bind_param("i", $fileId);
     $stmt->execute();
@@ -34,18 +34,18 @@ if (isset($_GET['id'])) {
         $fileUrl = $file['file_path'];
         $folderName = $file['folder'] ?: 'Uncategorized';
 
-        // Get public ID from Cloudinary URL
+      
         $parts = explode('/', parse_url($fileUrl, PHP_URL_PATH));
         $publicIdWithExt = end($parts);
         $publicId = pathinfo($publicIdWithExt, PATHINFO_FILENAME);
 
         try {
-            // Attempt to delete from Cloudinary
+          
             $cloudinary->uploadApi()->destroy("doc_mgmt/$folderName/$publicId", [
                 'resource_type' => 'raw'
             ]);
 
-            // Delete from database
+       
             $deleteStmt = $conn->prepare("DELETE FROM uploads WHERE id = ?");
             $deleteStmt->bind_param("i", $fileId);
             $deleteStmt->execute();
