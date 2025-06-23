@@ -43,9 +43,21 @@ def generate():
         print("User message:", user_message)
 
         response = llm.chat.completions.create(
-            messages=[{"role": "user", "content": user_message}]
-        )
-        reply = response.choices[0].message.content.strip()
+    messages=[
+        {
+            "role": "system",
+            "content": ""
+        },
+        {
+            "role": "user",
+            "content": user_message
+        }
+    ]
+)
+
+        full_reply = response.choices[0].message.content.strip()
+        reply = full_reply[:100] + "..." if len(full_reply) > 100 else full_reply
+
         print("AI reply:", reply)
         return jsonify({"reply": reply})
 

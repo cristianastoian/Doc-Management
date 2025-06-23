@@ -333,6 +333,13 @@ canvas#fileTypeChart {
     .chat-send-btn:hover {
       background-color: rgb(211, 174, 217);
     }
+    #chat-response {
+  max-height: 200px;        
+  overflow-y: auto;
+  white-space: pre-line;
+  padding-right: 10px;
+}
+
   </style>
 </head>
 <body>
