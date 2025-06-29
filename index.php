@@ -311,7 +311,7 @@ canvas#fileTypeChart {
 
     .chat-input-group {
       display: flex;
-      margin-top: 10px;
+      margin-top: 11px;
     }
 
     #chat-input {
@@ -516,6 +516,7 @@ new Chart(ctx, {
     }]
   },
   options: {
+    
     plugins: { legend: { position: 'bottom' } }
   }
 });
