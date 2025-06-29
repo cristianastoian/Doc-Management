@@ -35,12 +35,17 @@ if ($row = $res->fetch_assoc()) {
     $totalFiles = $row['count'];
 }
 
+$totalFiles = 0;
+$res = $conn->query("SELECT COUNT(*) AS count FROM uploads WHERE user_id = $user_id AND file_path IS NOT NULL AND file_path != ''");
+if ($row = $res->fetch_assoc()) {
+    $totalFiles = $row['count'];
+}
+
 $filesToday = 0;
-$res = $conn->query("SELECT COUNT(*) AS count FROM uploads WHERE user_id = $user_id AND DATE(uploaded_at) = CURDATE()");
+$res = $conn->query("SELECT COUNT(*) AS count FROM uploads WHERE user_id = $user_id AND DATE(uploaded_at) = CURDATE() AND file_path IS NOT NULL AND file_path != ''");
 if ($row = $res->fetch_assoc()) {
     $filesToday = $row['count'];
 }
-
 
 $typeCounts = [
     'pdf' => 0,
@@ -51,14 +56,15 @@ $typeCounts = [
 ];
 $totalTypes = 0;
 
-$res = $conn->query("SELECT file_name FROM uploads WHERE user_id = $user_id");
+$res = $conn->query("SELECT file_name FROM uploads WHERE user_id = $user_id AND file_path IS NOT NULL AND file_path != ''");
 while ($row = $res->fetch_assoc()) {
     $ext = strtolower(pathinfo($row['file_name'], PATHINFO_EXTENSION));
     if (isset($typeCounts[$ext])) {
         $typeCounts[$ext]++;
-         $totalTypes++;
+        $totalTypes++;
     }
 }
+
 $typePercents = [];
 foreach ($typeCounts as $type => $count) {
     $typePercents[$type] = $totalTypes > 0 ? round(($count / $totalTypes) * 100) : 0;

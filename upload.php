@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 
@@ -11,11 +10,9 @@ $user_id = $_SESSION['user_id'];
 
 include '_Nav.php';
 include './conn.php';
-
 require 'vendor/autoload.php';
 
 use Cloudinary\Cloudinary;
-use Cloudinary\Api\Upload\UploadApi;
 
 $cloudinary = new Cloudinary([
     'cloud' => [
@@ -29,49 +26,48 @@ $cloudinary = new Cloudinary([
 if (isset($_POST['upload']) && isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
     $fileTmpPath = $_FILES['file']['tmp_name'];
     $fileName = basename($_FILES['file']['name']);
+    $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    $publicId = pathinfo($fileName, PATHINFO_FILENAME);
 
     $folderInput = trim($_POST['folder'] ?? '');
-    if ($folderInput === '') {
-        $folderInput = 'Uncategorized';
-    }
+    if ($folderInput === '') $folderInput = 'Uncategorized';
 
     $folderStyleInput = trim($_POST['folder_icon'] ?? '');
-    if ($folderStyleInput === '') {
-        $folderStyleInput = 'red';
-    }
+    if ($folderStyleInput === '') $folderStyleInput = 'red';
 
     $folderEscaped = $conn->real_escape_string($folderInput);
     $folderStyleEscaped = $conn->real_escape_string($folderStyleInput);
+    $fileNameEscaped = $conn->real_escape_string($fileName);
 
     try {
-        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-        $publicId = pathinfo($fileName, PATHINFO_FILENAME); 
+        $cloudinaryFolder = "doc_mgmt/$folderEscaped";
 
-        $cloudinaryFolder = 'doc_mgmt/' . $folderEscaped;
+        $imageTypes = ['jpg', 'jpeg', 'png', 'gif'];
+        $docTypes = ['pdf', 'docx', 'xlsx', 'pptx', 'txt'];
+        $validExtensions = array_merge($imageTypes, $docTypes);
+
+        $resourceType = in_array($extension, $imageTypes) ? 'image' : 'raw';
+
+        if (!in_array($extension, $validExtensions)) {
+            throw new Exception("Unsupported file type: .$extension");
+        }
 
         $options = [
             'folder' => $cloudinaryFolder,
             'public_id' => $publicId,
             'use_filename' => true,
-            'unique_filename' => false
+            'unique_filename' => false,
+            'resource_type' => $resourceType,
+            'format' => $extension
         ];
 
-        
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
-            $options['resource_type'] = 'raw';
-            $options['format'] = $extension;  
-        }
-
         $uploadResult = $cloudinary->uploadApi()->upload($fileTmpPath, $options);
-        $publicUrl = $uploadResult['secure_url'];
-
-        $fileNameEscaped = $conn->real_escape_string($fileName);
-        $publicUrlEscaped = $conn->real_escape_string($publicUrl);
-        $folderValue = "'$folderEscaped'";
+        $publicUrl = $conn->real_escape_string($uploadResult['secure_url']);
 
         $sql = "INSERT INTO uploads (file_name, file_path, user_id, folder) 
-                VALUES ('$fileNameEscaped', '$publicUrlEscaped', $user_id, $folderValue)";
+                VALUES ('$fileNameEscaped', '$publicUrl', $user_id, '$folderEscaped')";
         $conn->query($sql);
+
 
         $check = $conn->prepare("SELECT id FROM folders WHERE user_id = ? AND name = ?");
         $check->bind_param("is", $user_id, $folderEscaped);

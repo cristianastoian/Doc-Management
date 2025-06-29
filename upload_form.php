@@ -8,6 +8,8 @@ if (!isset($_SESSION['user_id'])) {
 include '_Nav.php';
 include 'conn.php';
 $user_id = $_SESSION['user_id'];
+
+$preselectedFolder = $_GET['folder'] ?? '';
 ?>
 
 <!DOCTYPE html>
@@ -48,13 +50,13 @@ $user_id = $_SESSION['user_id'];
         }
 
         .btn-primary {
-            background-color:rgb(244, 193, 204);
+            background-color: rgb(244, 193, 204);
             border: none;
             border-radius: 8px;
         }
 
         .btn-primary:hover {
-            background-color:rgb(221, 157, 231);
+            background-color: rgb(221, 157, 231);
         }
 
         .btn-secondary {
@@ -71,16 +73,17 @@ $user_id = $_SESSION['user_id'];
 
             <div class="form-group">
                 <label for="file"><strong>Choose File</strong></label>
-                <input type="file" name="file" id="file" class="form-control" required>
+                <input type="file" name="file" id="file" class="form-control" required
+                       accept=".jpg,.jpeg,.png,.gif,.pdf,.docx,.xlsx,.pptx,.txt">
             </div>
 
             <div class="form-group">
                 <label for="folder"><strong>Folder Name</strong> <small class="text-muted">(optional)</small></label>
-                <input type="text" name="folder" id="folder" list="folderList" class="form-control" placeholder="Type or choose a folder">
+                <input type="text" name="folder" id="folder" list="folderList" class="form-control"
+                       value="<?= htmlspecialchars($preselectedFolder) ?>" placeholder="Type or choose a folder">
                 <datalist id="folderList">
                     <?php
                     $folderNames = [];
-
                     $stmt = $conn->prepare("SELECT name FROM folders WHERE user_id = ?");
                     $stmt->bind_param("i", $user_id);
                     $stmt->execute();
@@ -113,34 +116,34 @@ $user_id = $_SESSION['user_id'];
 </div>
 
 <script>
-const existingFolders = <?= json_encode($folderNames) ?>;
-const folderInput = document.getElementById("folder");
-const folderStyleSelect = document.getElementById("folder_icon");
+    const existingFolders = <?= json_encode($folderNames) ?>;
+    const folderInput = document.getElementById("folder");
+    const folderStyleSelect = document.getElementById("folder_icon");
 
-folderInput.addEventListener("input", function () {
-    const typed = folderInput.value.trim();
-    if (typed !== "" && existingFolders.includes(typed)) {
-        folderStyleSelect.disabled = true;
-        folderStyleSelect.title = "This folder already exists and has a style.";
-        folderStyleSelect.classList.add("bg-light");
-        folderStyleSelect.style.cursor = "not-allowed";
-    } else {
-        folderStyleSelect.disabled = false;
-        folderStyleSelect.title = "Choose a color for the new folder.";
-        folderStyleSelect.classList.remove("bg-light");
-        folderStyleSelect.style.cursor = "pointer";
-    }
-});
+    folderInput.addEventListener("input", function () {
+        const typed = folderInput.value.trim();
+        if (typed !== "" && existingFolders.includes(typed)) {
+            folderStyleSelect.disabled = true;
+            folderStyleSelect.title = "This folder already exists and has a style.";
+            folderStyleSelect.classList.add("bg-light");
+            folderStyleSelect.style.cursor = "not-allowed";
+        } else {
+            folderStyleSelect.disabled = false;
+            folderStyleSelect.title = "Choose a color for the new folder.";
+            folderStyleSelect.classList.remove("bg-light");
+            folderStyleSelect.style.cursor = "pointer";
+        }
+    });
 
-document.querySelector("form").addEventListener("submit", function (e) {
-    const folderName = folderInput.value.trim();
-    const folderStyle = folderStyleSelect.value.trim();
-    if (folderName !== "" && !existingFolders.includes(folderName) && folderStyle === "") {
-        e.preventDefault();
-        alert("Please select a folder style color if you're creating a new folder.");
-        folderStyleSelect.focus();
-    }
-});
+    document.querySelector("form").addEventListener("submit", function (e) {
+        const folderName = folderInput.value.trim();
+        const folderStyle = folderStyleSelect.value.trim();
+        if (folderName !== "" && !existingFolders.includes(folderName) && folderStyle === "") {
+            e.preventDefault();
+            alert("Please select a folder style color if you're creating a new folder.");
+            folderStyleSelect.focus();
+        }
+    });
 </script>
 
 </body>

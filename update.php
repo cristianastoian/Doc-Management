@@ -1,6 +1,5 @@
 <?php
 session_start();
-
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
@@ -11,12 +10,10 @@ $user_id = $_SESSION['user_id'];
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-include '_Nav.php';
 include './conn.php';
 require 'vendor/autoload.php';
 
 use Cloudinary\Cloudinary;
-use Cloudinary\Api\Upload\UploadApi;
 
 $cloudinary = new Cloudinary([
     'cloud' => [
@@ -27,25 +24,24 @@ $cloudinary = new Cloudinary([
     'url' => ['secure' => true]
 ]);
 
-if (isset($_GET['id'])) {
-    $id = intval($_GET['id']);
-
-    $sql = "SELECT file_name, file_path, folder FROM uploads WHERE id = $id AND user_id = $user_id";
-    $result = $conn->query($sql);
-
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $oldFileName = $row['file_name'];
-        $oldFilePath = $row['file_path'];
-        $folder = $row['folder'] ?? '';
-    } else {
-        echo "<div class='alert alert-danger'>File not found or access denied.</div>";
-        exit;
-    }
-} else {
+if (!isset($_GET['id'])) {
     echo "<div class='alert alert-danger'>No file specified.</div>";
     exit;
 }
+
+$id = intval($_GET['id']);
+$sql = "SELECT file_name, file_path, folder FROM uploads WHERE id = $id AND user_id = $user_id";
+$result = $conn->query($sql);
+
+if ($result->num_rows === 0) {
+    echo "<div class='alert alert-danger'>File not found or access denied.</div>";
+    exit;
+}
+
+$row = $result->fetch_assoc();
+$oldFileName = $row['file_name'];
+$oldFilePath = $row['file_path'];
+$folder = $row['folder'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $newFileUploaded = isset($_FILES['file']) && $_FILES['file']['error'] == UPLOAD_ERR_OK;
@@ -55,54 +51,74 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $newOriginalName = basename($_FILES['file']['name']);
         $fileTmpPath = $_FILES['file']['tmp_name'];
         $extension = strtolower(pathinfo($newOriginalName, PATHINFO_EXTENSION));
+        $publicId = pathinfo($newOriginalName, PATHINFO_FILENAME);
+
+        $validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'docx', 'xlsx', 'pptx', 'txt'];
+        $finalExtension = in_array($extension, $validExtensions) ? $extension : 'tmp';
 
         $cloudinaryFolder = 'doc_mgmt' . (!empty($folder) ? "/$folder" : '');
-        $options = ['folder' => $cloudinaryFolder];
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
-            $options['resource_type'] = 'raw';
-        }
+        $options = [
+            'folder' => $cloudinaryFolder,
+            'use_filename' => true,
+            'unique_filename' => false,
+            'resource_type' => in_array($finalExtension, ['jpg', 'jpeg', 'png', 'gif']) ? 'image' : 'raw',
+            'format' => $finalExtension
+        ];
 
         try {
             $uploadResult = $cloudinary->uploadApi()->upload($fileTmpPath, $options);
             $newUrl = $uploadResult['secure_url'];
 
-          
             $parsed = parse_url($oldFilePath, PHP_URL_PATH);
             $parts = explode('/', $parsed);
             $publicIdWithExt = end($parts);
-            $publicId = pathinfo($publicIdWithExt, PATHINFO_FILENAME);
-            $deletePath = $cloudinaryFolder . '/' . $publicId;
-            $cloudinary->uploadApi()->destroy($deletePath);
+            $oldPublicId = pathinfo($publicIdWithExt, PATHINFO_FILENAME);
+            $deletePath = $cloudinaryFolder . '/' . $oldPublicId;
 
-           
+            $resourceType = in_array($finalExtension, ['jpg', 'jpeg', 'png', 'gif']) ? 'image' : 'raw';
+            $cloudinary->uploadApi()->destroy($deletePath, ['resource_type' => $resourceType]);
+
+
             $finalName = $newFileNameText !== ''
-                ? pathinfo($newFileNameText, PATHINFO_FILENAME) . '.' . $extension
+                ? pathinfo($newFileNameText, PATHINFO_FILENAME) . '.' . $finalExtension
                 : $newOriginalName;
 
             $escapedName = $conn->real_escape_string($finalName);
             $escapedUrl = $conn->real_escape_string($newUrl);
+
             $conn->query("UPDATE uploads SET file_name = '$escapedName', file_path = '$escapedUrl' WHERE id = $id AND user_id = $user_id");
 
-            echo "<script>alert('File updated successfully!'); window.location.href = 'view_files.php';</script>";
+            echo "<script>
+                alert('File updated successfully!');
+                window.location.href = 'view_folder.php?folder=" . urlencode($folder) . "';
+            </script>";
             exit;
 
         } catch (Exception $e) {
             echo "<div class='alert alert-danger'>Cloudinary Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+            exit;
         }
 
     } elseif ($newFileNameText !== '') {
         $ext = pathinfo($oldFileName, PATHINFO_EXTENSION);
         $renamedWithExt = pathinfo($newFileNameText, PATHINFO_FILENAME) . '.' . $ext;
         $escapedRename = $conn->real_escape_string($renamedWithExt);
+
         $conn->query("UPDATE uploads SET file_name = '$escapedRename' WHERE id = $id AND user_id = $user_id");
 
-        echo "<script>alert('File name updated.'); window.location.href = 'view_files.php';</script>";
+        echo "<script>
+            alert('File name updated.');
+            window.location.href = 'view_folder.php?folder=" . urlencode($folder) . "';
+        </script>";
         exit;
 
     } else {
         echo "<div class='alert alert-warning'>No changes were made.</div>";
+        exit;
     }
 }
+
+include '_Nav.php';
 ?>
 
 <!DOCTYPE html>
@@ -120,7 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <form action="update.php?id=<?= $id ?>" method="POST" enctype="multipart/form-data">
         <div class="form-group">
             <label for="file">Select New File (optional)</label>
-            <input type="file" name="file" id="file" class="form-control-file">
+            <input type="file" name="file" id="file" class="form-control-file"
+                   accept=".jpg,.jpeg,.png,.gif,.pdf,.docx,.xlsx,.pptx,.txt">
         </div>
 
         <div class="form-group mt-3">
@@ -131,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <button type="submit" class="btn btn-primary mt-3">Update File</button>
     </form>
 
-    <a href="view_files.php" class="btn btn-secondary mt-3">Back to Files</a>
+    <a href="view_folder.php?folder=<?= urlencode($folder) ?>" class="btn btn-secondary mt-3">Back to Folder</a>
 </div>
 </body>
 </html>

@@ -20,7 +20,6 @@ $imageMap = [
     'grey' => 'folder-icon-grey.png'
 ];
 
-
 switch ($sort) {
     case 'name_desc': 
         $orderBy = "file_name DESC"; 
@@ -191,7 +190,6 @@ if ($searchQuery !== '') {
   <?php endif; ?>
 </div>
 
-
 <div id="edit-popup" class="edit-btn-popup" onclick="openEditModal()">Edit</div>
 
 <script>
@@ -209,8 +207,8 @@ function showEditButton(event, element, id, name, color) {
 
 function openEditModal() {
   if (currentFolder.id) {
-        window.location.href = 'edit_folder.php?folder_id=' + currentFolder.id;
-    }
+    window.location.href = 'edit_folder.php?folder_id=' + currentFolder.id;
+  }
 }
 
 document.addEventListener('click', function (e) {

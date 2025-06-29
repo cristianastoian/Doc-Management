@@ -125,7 +125,7 @@ while ($row = $result->fetch_assoc()) {
     .file-row img {
         width: 100px;
         height: 50px;
-        object-fit:scale-down;
+        object-fit: scale-down;
     }
 
     .add-file-card {
@@ -172,25 +172,28 @@ while ($row = $result->fetch_assoc()) {
         <p>No files found in this folder.</p>
     <?php else: ?>
         <?php foreach ($files as $file): ?>
-            <?php
-            $fileName = $file['file_name'];
-            $fileUrl = htmlspecialchars($file['file_path']);
-            $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-            $viewer = $fileUrl;
+        <?php
+$fileName = $file['file_name'];
+$fileUrl = htmlspecialchars($file['file_path']);
+$ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+$encodedUrl = urlencode($fileUrl);
 
-            $googleViewer = "https://docs.google.com/gview?url=" . urlencode($fileUrl) . "&embedded=true";
+if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp'])) {
+    $thumb = "<img src='$fileUrl' class='preview-img' onclick=\"showImageModal('$fileUrl')\">";
+    $viewLink = $fileUrl;
+} elseif (in_array($ext, ['docx', 'pptx', 'txt','pdf'])) {
+    $viewerUrl = "https://docs.google.com/gview?embedded=true&url=$encodedUrl";
+    $thumb = "<iframe src='$viewerUrl' class='doc-preview' frameborder='0'></iframe>";
+    $viewLink = $viewerUrl;
+}   elseif ($ext === 'xlsx') {
+    $thumb = "<iframe src='https://view.officeapps.live.com/op/embed.aspx?src=$encodedUrl' class='doc-preview' frameborder='0'></iframe>";
+    $viewLink = "https://view.officeapps.live.com/op/view.aspx?src=$encodedUrl";
+} else {
+    $thumb = "<div class='doc-preview d-flex align-items-center justify-content-center text-muted'>No preview</div>";
+    $viewLink = $fileUrl;
+}
+?>
 
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'jfif'])) {
-                $thumb = "<img src='$fileUrl' class='preview-img' onclick=\"showImageModal('$fileUrl')\">";
-                $viewLink = $fileUrl;
-            } elseif (in_array($ext, ['pdf', 'docx', 'xlsx', 'txt', 'pptx'])) {
-                $thumb = "<iframe src='$googleViewer' class='doc-preview' frameborder='0'></iframe>";
-                $viewLink = $googleViewer;
-            } else {
-                $thumb = "<div class='doc-preview d-flex align-items-center justify-content-center text-muted'>No preview</div>";
-                $viewLink = $fileUrl;
-            }
-            ?>
 
             <?php if ($view === 'grid'): ?>
                 <div class="card file-card">

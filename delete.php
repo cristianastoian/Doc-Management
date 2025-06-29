@@ -9,7 +9,6 @@ include './conn.php';
 require 'vendor/autoload.php';
 
 use Cloudinary\Cloudinary;
-use Cloudinary\Api\Upload\UploadApi;
 
 $cloudinary = new Cloudinary([
     'cloud' => [
@@ -20,39 +19,77 @@ $cloudinary = new Cloudinary([
     'url' => ['secure' => true]
 ]);
 
+$user_id = $_SESSION['user_id'];
+
+function getResourceType($ext) {
+    $ext = strtolower($ext);
+    $imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'jfif', 'webp'];
+    return in_array($ext, $imageTypes) ? 'image' : 'raw';
+}
+
+if (isset($_GET['folder']) && $_GET['folder'] !== '') {
+    $folderName = $_GET['folder'];
+
+   
+    $stmt = $conn->prepare("SELECT file_path, file_name FROM uploads WHERE folder = ? AND user_id = ?");
+    $stmt->bind_param("si", $folderName, $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $fileUrl = $row['file_path'];
+        $originalName = $row['file_name'];
+        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $publicId = pathinfo($originalName, PATHINFO_FILENAME);
+
+        try {
+            $cloudinary->uploadApi()->destroy("doc_mgmt/$folderName/$publicId", [
+                'resource_type' => getResourceType($ext)
+            ]);
+        } catch (Exception $e) {
+          
+        }
+    }
+
+   
+    $conn->query("DELETE FROM uploads WHERE folder = '$folderName' AND user_id = $user_id");
+
+    $deleteFolder = $conn->prepare("DELETE FROM folders WHERE name = ? AND user_id = ?");
+    $deleteFolder->bind_param("si", $folderName, $user_id);
+    $deleteFolder->execute();
+
+    echo "<script>alert('Folder and its files deleted successfully!'); window.location.href = 'view_files.php';</script>";
+    exit;
+}
+
 if (isset($_GET['id'])) {
     $fileId = (int)$_GET['id'];
 
-    
-    $stmt = $conn->prepare("SELECT file_path, folder FROM uploads WHERE id = ?");
-    $stmt->bind_param("i", $fileId);
+    $stmt = $conn->prepare("SELECT file_path, file_name, folder FROM uploads WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $fileId, $user_id);
     $stmt->execute();
     $result = $stmt->get_result();
     $file = $result->fetch_assoc();
 
     if ($file) {
         $fileUrl = $file['file_path'];
+        $originalName = $file['file_name'];
         $folderName = $file['folder'] ?: 'Uncategorized';
-
-      
-        $parts = explode('/', parse_url($fileUrl, PHP_URL_PATH));
-        $publicIdWithExt = end($parts);
-        $publicId = pathinfo($publicIdWithExt, PATHINFO_FILENAME);
+        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $publicId = pathinfo($originalName, PATHINFO_FILENAME);
 
         try {
-          
             $cloudinary->uploadApi()->destroy("doc_mgmt/$folderName/$publicId", [
-                'resource_type' => 'raw'
+                'resource_type' => getResourceType($ext)
             ]);
 
-       
-            $deleteStmt = $conn->prepare("DELETE FROM uploads WHERE id = ?");
-            $deleteStmt->bind_param("i", $fileId);
+            $deleteStmt = $conn->prepare("DELETE FROM uploads WHERE id = ? AND user_id = ?");
+            $deleteStmt->bind_param("ii", $fileId, $user_id);
             $deleteStmt->execute();
 
-            echo "<script>alert('File deleted successfully!');</script>";
-            header("Location: view_folder.php?folder=" . urlencode($folderName));
+            echo "<script>alert('File deleted successfully!'); window.location.href = 'view_folder.php?folder=" . urlencode($folderName) . "';</script>";
             exit;
+
         } catch (Exception $e) {
             echo "Cloud delete error: " . $e->getMessage();
         }
@@ -62,6 +99,6 @@ if (isset($_GET['id'])) {
 
     $conn->close();
 } else {
-    echo "No file ID specified.";
+    echo "No file or folder specified.";
 }
 ?>
