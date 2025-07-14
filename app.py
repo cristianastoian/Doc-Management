@@ -32,6 +32,7 @@ def after_request(response):
         return response
     return response
 
+
 @app.route("/generate", methods=["POST"])
 def generate():
     try:
@@ -41,22 +42,42 @@ def generate():
 
         user_message = data["message"]
         print("User message:", user_message)
+        combined_message= ("You are an AI assistant embedded in a document management platform and you answer specifically related to this document management app not universally or about other things, all questions you receive should be answered about this app. "
+                "This app allows users to upload, organize, and view documents in folders. "
+                "Help the user with actions like uploading files, navigating folders, understanding stats, "
+                "and managing their dashboard. Be concise, friendly, and guide them in using the features."
+                "You should answer this specific questions exactly likes this:"
+                "question 1: How to upload a file- answer: To upload a file you should find the button Upload file, just click on it and you will be prompted to select the file you want, the folder you will put it in and the color of the folder, if you do not wish to choose a folder, the file will automatically go to the Uncategorized Folder!"
+                "question 2: How to logout? - answer: In order to logout you can find the Logout button, you can just click on it and you will be Logged out in a second!"
+                "question 2: How to delete a file? -answer: You cand delete a file either by pressing the three dots next to it and selecting Delete or by deleting the entire folder that the file is in! Now answer:\n\n"
+                +user_message)
+
 
         response = llm.chat.completions.create(
     messages=[
         {
             "role": "system",
-            "content": ""
+            "content": ("You are an AI assistant embedded in a document management platform and you answer specifically related to this document management app not universally or about other things, all questions you receive should be answered about this app. "
+                "This app allows users to upload, organize, and view documents in folders. "
+                "Help the user with actions like uploading files, navigating folders, understanding stats, "
+                "and managing their dashboard. Be concise, friendly, and guide them in using the features."
+                "You should answer this specific questions exactly likes this:"
+                "question 1: How to upload a file- answer: To upload a file you should find the button Upload file, just click on it and you will be prompted to select the file you want, the folder you will put it in and the color of the folder, if you do not wish to choose a folder, the file will automatically go to the Uncategorized Folder!"
+                "question 2: How to logout? - answer: In order to logout you can find the Logout button, you can just click on it and you will be Logged out in a second!"
+                "question 2: How to delete a file? -answer: You cand delete a file either by pressing the three dots next to it and selecting Delete or by deleting the entire folder that the file is in!"
+       )
+       
         },
         {
             "role": "user",
-            "content": user_message
+            "content": combined_message
+            
         }
     ]
 )
 
         full_reply = response.choices[0].message.content.strip()
-        reply = full_reply[:100] + "..." if len(full_reply) > 100 else full_reply
+        reply = full_reply[:500] + "..." if len(full_reply) > 500 else full_reply
 
         print("AI reply:", reply)
         return jsonify({"reply": reply})
